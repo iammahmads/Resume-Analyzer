@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Explicitly check for Admin role in user profile
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Validation for User Entity
+    function isValidUser(data) {
+      return data.keys().hasAll(['userId', 'email', 'name', 'role', 'createdAt']) &&
+             data.keys().size() == 5 &&
+             data.userId is string &&
+             data.userId.size() <= 128 &&
+             data.email is string &&
+             data.email.size() <= 256 &&
+             data.name is string &&
+             data.name.size() <= 128 &&
+             data.role in ['seeker', 'admin'] &&
+             data.createdAt is timestamp;
+    }
+
+    // Validation for Resume Entity
+    function isValidResume(data) {
+      return data.keys().hasAll(['resumeId', 'userId', 'title', 'contentText', 'createdAt']) &&
+             data.keys().size() == 5 &&
+             data.resumeId is string &&
+             data.resumeId.size() <= 128 &&
+             data.userId is string &&
+             data.userId.size() <= 128 &&
+             data.title is string &&
+             data.title.size() <= 256 &&
+             data.contentText is string &&
+             data.contentText.size() <= 500000 &&
+             data.createdAt is timestamp;
+    }
+
+    // Validation for Analysis Entity
+    function isValidAnalysis(data) {
+      return data.keys().hasAll(['analysisId', 'userId', 'userName', 'userEmail', 'jobTitle', 'jobDescription', 'resumeText', 'overallScore', 'metrics', 'skillsGap', 'matchingPercentage', 'keywordMatches', 'coverLetter', 'hrEvaluation', 'adminFeedback', 'createdAt']) &&
+             data.keys().size() == 16 &&
+             data.analysisId is string &&
+             data.analysisId.size() <= 128 &&
+             data.userId is string &&
+             data.userId.size() <= 128 &&
+             data.userName is string &&
+             data.userEmail is string &&
+             data.jobTitle is string &&
+             data.jobTitle.size() <= 512 &&
+             data.jobDescription is string &&
+             data.resumeText is string &&
+             data.overallScore is int &&
+             data.metrics is string &&
+             data.skillsGap is string &&
+             data.matchingPercentage is int &&
+             data.keywordMatches is string &&
+             data.coverLetter is string &&
+             data.hrEvaluation is string &&
+             data.adminFeedback is string &&
+             data.createdAt is timestamp;
+    }
+
+    // Users Collection Rules
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin(); // Only admins can list users
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role in ['seeker', 'admin']; // Allow demo admin registration
+      allow update: if isSignedIn() && (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role; // Prevent role hijacking
+      allow delete: if isAdmin();
+    }
+
+    // Resumes Collection Rules
+    match /resumes/{resumeId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin()) && isValidResume(request.resource.data);
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin()) && isValidResume(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Analyses Collection Rules
+    match /analyses/{analysisId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin()) && isValidAnalysis(request.resource.data);
+      allow update: if isSignedIn() && (
+        // Seeker owner updating details
+        (resource.data.userId == request.auth.uid && isValidAnalysis(request.resource.data) && request.resource.data.userId == resource.data.userId && request.resource.data.adminFeedback == resource.data.adminFeedback) ||
+        // Admin updating admin feedback response
+        (isAdmin() && isValidAnalysis(request.resource.data) && request.resource.data.userId == resource.data.userId)
+      );
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+  }
+}

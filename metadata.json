@@ -1,0 +1,8 @@
+{
+  "name": "Remix: AI Resume Analyzer",
+  "description": "An AI-powered resume parsing and ATS auditing analyzer using Gemini API with granular scorecards, cover letter generation, and predictive interviewing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

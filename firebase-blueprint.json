@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a registered Job Seeker or Administrator.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The unique Firebase Authentication UID." },
+        "email": { "type": "string", "description": "User email address." },
+        "name": { "type": "string", "description": "Display name of the user." },
+        "role": { "type": "string", "description": "Role: 'seeker' or 'admin'." },
+        "createdAt": { "type": "string", "description": "Registration time." }
+      },
+      "required": ["userId", "email", "name", "role", "createdAt"]
+    },
+    "Resume": {
+      "title": "Resume",
+      "description": "Represents a resume uploaded/pasted by a job seeker.",
+      "type": "object",
+      "properties": {
+        "resumeId": { "type": "string", "description": "Unique resume identifier." },
+        "userId": { "type": "string", "description": "Owner userId." },
+        "title": { "type": "string", "description": "Title/filename of the resume." },
+        "contentText": { "type": "string", "description": "The actual text content of the resume." },
+        "createdAt": { "type": "string", "description": "Upload timestamp." }
+      },
+      "required": ["resumeId", "userId", "title", "contentText", "createdAt"]
+    },
+    "Analysis": {
+      "title": "Analysis",
+      "description": "Represents a comprehensive, Gemini-driven resume analysis.",
+      "type": "object",
+      "properties": {
+        "analysisId": { "type": "string", "description": "Unique analysis ID." },
+        "userId": { "type": "string", "description": "The ID of the user who requested the analysis." },
+        "userName": { "type": "string", "description": "For admin panel analytics." },
+        "userEmail": { "type": "string", "description": "For admin panel analytics." },
+        "jobTitle": { "type": "string", "description": "The targeted job definition/role." },
+        "jobDescription": { "type": "string", "description": "The full targeted job description." },
+        "resumeText": { "type": "string", "description": "The resume text analyzed." },
+        "overallScore": { "type": "integer", "description": "The calculated aggregate ATS match score out of 100." },
+        "metrics": { "type": "string", "description": "JSON string containing thirty specific ATS metrics grouped into Format, Experience, Skills, and Language." },
+        "skillsGap": { "type": "string", "description": "JSON string containing key missing skills identified." },
+        "matchingPercentage": { "type": "integer", "description": "Target job matching score." },
+        "keywordMatches": { "type": "string", "description": "JSON string containing matched and missing keywords." },
+        "coverLetter": { "type": "string", "description": "AI generated ready-to-use cover letter." },
+        "hrEvaluation": { "type": "string", "description": "JSON string containing Strengths, Weaknesses, Suitability index, and Interview prep questions." },
+        "adminFeedback": { "type": "string", "description": "Expert coach/HR review feedback from admin if supplied." },
+        "createdAt": { "type": "string", "description": "Analysis generated timestamp." }
+      },
+      "required": ["analysisId", "userId", "jobTitle", "resumeText", "overallScore", "metrics", "skillsGap", "matchingPercentage", "keywordMatches", "hrEvaluation", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles locked to their respective authenticated UID."
+    },
+    "/resumes/{resumeId}": {
+      "schema": "Resume",
+      "description": "Resumes owned by job seekers and protected by user visibility."
+    },
+    "/analyses/{analysisId}": {
+      "schema": "Analysis",
+      "description": "Resume evaluations and scoring profiles."
+    }
+  }
+}
