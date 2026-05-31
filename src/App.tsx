@@ -282,12 +282,42 @@ export default function App() {
       setAuthName("");
     } catch (err: any) {
       console.error("Auth error:", err);
+      
+      const isDemoStr = authEmail.trim() === 'admin@analyzer.com' || authEmail.trim() === 'seeker@demo.com';
+      if (isDemoStr && (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password')) {
+        try {
+          const tempName = authEmail.trim() === 'admin@analyzer.com' ? 'System Administrator' : 'Demo Seeker';
+          const tempRole = authEmail.trim() === 'admin@analyzer.com' ? 'admin' : 'seeker';
+          const userCredential = await createUserWithEmailAndPassword(auth, authEmail.trim(), authPassword);
+          const newUserData = {
+            userId: userCredential.user.uid,
+            email: authEmail.trim().toLowerCase(),
+            name: tempName,
+            role: tempRole,
+            createdAt: serverTimestamp(),
+          };
+          await setDoc(doc(db, "users", userCredential.user.uid), newUserData);
+          showNotification(`Welcome, ${tempName}! Demo account initialized successfully.`);
+          setAuthEmail("");
+          setAuthPassword("");
+          setAuthName("");
+          setAuthLoading(false);
+          return;
+        } catch (createErr: any) {
+          if (createErr.code !== 'auth/email-already-in-use') {
+             setAuthError(createErr.message);
+             setAuthLoading(false);
+             return;
+          }
+        }
+      }
+
       let errorMessage = "Failed authentication procedure.";
       
       if (err.code === 'auth/email-already-in-use') {
         errorMessage = "This email is already registered. Please log in instead.";
       } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        errorMessage = "Invalid email or password.";
+        errorMessage = "Invalid email or password. If this is a demo account, make sure you sign up first.";
       } else if (err.code === 'auth/weak-password') {
         errorMessage = "Password should be at least 6 characters.";
       } else if (err.message?.includes('offline')) {
@@ -332,6 +362,19 @@ export default function App() {
       showNotification("Logged out safely. Keep optimizing!");
     } catch (error) {
       console.error("Error signing out: ", error);
+    }
+  };
+
+  // Fast demo user bootstrap login
+  const prefillAuth = (role: "seeker" | "admin") => {
+    if (role === "admin") {
+      setAuthEmail("admin@analyzer.com");
+      setAuthPassword("admin123");
+      setIsSignUp(false);
+    } else {
+      setAuthEmail("seeker@demo.com");
+      setAuthPassword("seeker123");
+      setIsSignUp(false);
     }
   };
 
@@ -702,6 +745,32 @@ export default function App() {
                   <Award className="w-6 h-6 text-indigo-600 mb-1" />
                   <span className="font-bold text-slate-800 block text-sm">Cover Letter Generation</span>
                   <span className="text-xs text-slate-500">Automatically creates optimized, ready-to-copy cover letters.</span>
+                </div>
+              </div>
+
+              {/* Bootstrapped Account Quick Selection Grid */}
+              <div className="bg-indigo-50/50 rounded-2xl border border-indigo-100/40 p-5">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">
+                  👉 Instant Platform Demo Evaluators (Click to Autofill)
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => prefillAuth("seeker")}
+                    className="flex-1 bg-white hover:bg-slate-50 text-left p-3.5 rounded-xl border border-indigo-100 hover:border-indigo-200 transition-all shadow-xs"
+                  >
+                    <span className="text-[10px] font-bold text-emerald-600 block uppercase tracking-wider">Candidate Seeker Profile</span>
+                    <span className="font-bold text-slate-800 text-sm block mt-0.5">Sabbir Shah (Demo Account)</span>
+                    <span className="text-xs text-slate-400 block font-mono">seeker@demo.com • seeker123</span>
+                  </button>
+
+                  <button
+                    onClick={() => prefillAuth("admin")}
+                    className="flex-1 bg-white hover:bg-slate-50 text-left p-3.5 rounded-xl border border-slate-100 hover:border-slate-200 transition-all shadow-xs"
+                  >
+                    <span className="text-[10px] font-bold text-indigo-600 block uppercase tracking-wider">Director Administrator Panel</span>
+                    <span className="font-bold text-slate-800 text-sm block mt-0.5">Principal Evaluator</span>
+                    <span className="text-xs text-slate-400 block font-mono">admin@analyzer.com • admin123</span>
+                  </button>
                 </div>
               </div>
 
